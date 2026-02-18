@@ -370,6 +370,26 @@ export class OrdersRepository implements IOrdersRepository {
                 },
             });
 
+            // 5. Precio Promedio de productos activos
+            const precioPromedio = await this.prisma.products.aggregate({
+                _avg: {
+                    precio: true,
+                },
+                where: {
+                    activo: true,
+                },
+            });
+
+            // 6. Stock Total de productos activos
+            const stockTotal = await this.prisma.products.aggregate({
+                _sum: {
+                    stock: true,
+                },
+                where: {
+                    activo: true,
+                },
+            });
+
             return {
                 ventas_totales_hoy: Number(ventasHoy._sum.total) || 0,
                 pedidos_pendientes: pedidosPendientes,
@@ -379,11 +399,35 @@ export class OrdersRepository implements IOrdersRepository {
                     nombre: p.nombre,
                     stock: Number(p.stock),
                 })),
+                precio_promedio: Number(precioPromedio._avg.precio) || 0,
+                stock_total: Number(stockTotal._sum.stock) || 0,
             };
         } catch (error) {
             console.error('Error al obtener datos del dashboard:', error);
             throw new Error(
                 `Error al obtener datos del dashboard: ${error.message}`,
+            );
+        }
+    }
+
+    async deleteOrder(id: number): Promise<orders | null> {
+        try {
+            const existingOrder = await this.prisma.orders.findUnique({
+                where: { id },
+            });
+
+            if (!existingOrder) {
+                throw new Error('La orden ingresada no existe, por lo tanto no se puede eliminar.');
+            }
+
+            const deletedOrder = await this.prisma.orders.delete({
+                where: { id },
+            });
+            return deletedOrder;
+        } catch (error) {
+            console.error('Error al eliminar la orden:', error);
+            throw new Error(
+                `Error al eliminar la orden: ${error.message}`,
             );
         }
     }

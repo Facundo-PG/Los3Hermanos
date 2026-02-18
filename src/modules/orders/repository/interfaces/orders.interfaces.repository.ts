@@ -14,4 +14,5 @@ export interface IOrdersRepository {
     ): Promise<PaginationResult<orders[]>>;
     updateOrder(id: number, data: UpdateOrderDto): Promise<any>;
     getDashboard(): Promise<DashboardData>;
+    deleteOrder(id: number): Promise<orders | null>;
 }

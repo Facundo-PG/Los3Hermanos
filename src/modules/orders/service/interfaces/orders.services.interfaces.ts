@@ -10,4 +10,5 @@ export interface IOrdersService {
     ): Promise<ResponseTemplate>;
     updateOrder(id: number, data: UpdateOrderDto): Promise<ResponseTemplate>;
     getDashboard(): Promise<ResponseTemplate>;
+    deleteOrder(id: number): Promise<ResponseTemplate>;
 }

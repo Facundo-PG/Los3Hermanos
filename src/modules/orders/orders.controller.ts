@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Res, UseGuards, Get, Query, Put } from '@nestjs/common';
+import { Controller, Post, Body, Res, UseGuards, Get, Query, Put, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { OrdersService } from './service/orders.service';
@@ -90,6 +90,7 @@ export class OrdersController {
         @Body() data: UpdateOrderDto,
         @Res() res: Response,
     ) {
+        console.log(`[CONTROLLER] PUT /orders/update - ID: ${id}, Body:`, JSON.stringify(data));
         const { statusCode, message, data: orderData } =
             await this.ordersService.updateOrder(Number(id), data);
         res.status(statusCode).json({
@@ -118,6 +119,36 @@ export class OrdersController {
     async getDashboard(@Res() res: Response) {
         const { statusCode, message, data } =
             await this.ordersService.getDashboard();
+        res.status(statusCode).json({
+            statusCode,
+            message,
+            data,
+        });
+    }
+
+    @Roles('admin')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Delete('delete')
+    @ApiOperation({ summary: 'Delete order success' })
+    @ApiResponse({ status: 200, description: 'Order deleted successfully' })
+    @ApiResponse({ status: 404, description: 'Order not found' })
+    @ApiResponse({
+        status: 500,
+        description: 'Internal Server Error',
+        schema: {
+            example: {
+                statusCode: 500,
+                message: 'Internal Server Error',
+                data: { mensajeError: 'Error al eliminar la orden' },
+            },
+        },
+    })
+    async deleteOrder(
+        @Query('id') id: string,
+        @Res() res: Response,
+    ) {
+        const { statusCode, message, data } =
+            await this.ordersService.deleteOrder(Number(id));
         res.status(statusCode).json({
             statusCode,
             message,

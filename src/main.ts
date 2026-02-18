@@ -5,7 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'; // Importá es
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
+
   // Agregá esta línea para que funcionen los DTOs
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,    // Elimina campos que no estén en el DTO
@@ -23,8 +23,8 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document); // La URL será http://localhost:3000/api
-
-  await app.listen(3000);
+  SwaggerModule.setup('api', app, document); // La URL será http://localhost:3001/api
+  app.enableCors();
+  await app.listen(3001);
 }
 bootstrap();

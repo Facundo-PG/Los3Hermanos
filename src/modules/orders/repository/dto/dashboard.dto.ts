@@ -3,6 +3,8 @@ export interface DashboardData {
     pedidos_pendientes: number;
     productos_mas_vendidos: ProductoVendido[];
     stock_critico: StockCritico[];
+    precio_promedio: number;
+    stock_total: number;
 }
 
 export interface ProductoVendido {

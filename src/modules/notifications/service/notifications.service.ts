@@ -103,4 +103,60 @@ export class NotificationsService {
             throw new Error(`Error al generar notificación: ${error.message}`);
         }
     }
+
+    async sendPasswordResetEmail(
+        to: string,
+        nombre: string,
+        resetUrl: string,
+    ): Promise<{ success: boolean; messageId: string; to: string }> {
+        try {
+            const mailFrom = process.env.MAIL_FROM || process.env.SMTP_USER;
+            const transporter = await this.getSmtpTransporter();
+
+            const info = await transporter.sendMail({
+                from: mailFrom,
+                to,
+                subject: 'Recuperación de contraseña',
+                text: `Hola ${nombre}, recibimos una solicitud para restablecer tu contraseña. Usa este enlace (válido por 15 minutos): ${resetUrl}`,
+                html: `<p>Hola <strong>${nombre}</strong>,</p><p>Recibimos una solicitud para restablecer tu contraseña.</p><p>Este enlace es válido por <strong>15 minutos</strong>:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>Si no solicitaste este cambio, ignora este correo.</p>`,
+            });
+
+            return {
+                success: true,
+                messageId: info.messageId,
+                to,
+            };
+        } catch (error) {
+            console.error('Error al enviar email de recuperación:', error);
+            throw new Error(`Error al enviar email de recuperación: ${error.message}`);
+        }
+    }
+
+    async sendEmailConfirmationEmail(
+        to: string,
+        nombre: string,
+        confirmationUrl: string,
+    ): Promise<{ success: boolean; messageId: string; to: string }> {
+        try {
+            const mailFrom = process.env.MAIL_FROM || process.env.SMTP_USER;
+            const transporter = await this.getSmtpTransporter();
+
+            const info = await transporter.sendMail({
+                from: mailFrom,
+                to,
+                subject: 'Confirma tu correo electrónico',
+                text: `Hola ${nombre}, Gracias por registrarte. Confirma tu correo con este enlace: ${confirmationUrl}`,
+                html: `<p>Hola <strong>${nombre}</strong>,</p><p>Gracias por registrarte.</p><p>Confirma tu correo haciendo clic aquí:</p><p><a href="${confirmationUrl}">${confirmationUrl}</a></p>`,
+            });
+
+            return {
+                success: true,
+                messageId: info.messageId,
+                to,
+            };
+        } catch (error) {
+            console.error('Error al enviar email de confirmación:', error);
+            throw new Error(`Error al enviar email de confirmación: ${error.message}`);
+        }
+    }
 }

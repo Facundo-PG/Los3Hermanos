@@ -213,7 +213,7 @@ export class OrdersRepository implements IOrdersRepository {
                 skip: (items - 1) * itemsPerPage,
                 take: itemsPerPage,
                 orderBy: {
-                    created_at: sortBy === 'asc' ? 'asc' : 'desc',
+                    created_at: sortBy === 'desc' ? 'desc' : 'asc',
                 },
                 include: {
                     order_items: {

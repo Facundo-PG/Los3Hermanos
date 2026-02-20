@@ -7,6 +7,7 @@ import { LoginDto } from './dto/login.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { createHash, randomBytes } from 'crypto';
 import { NotificationsService } from '../notifications/service/notifications.service';
+import { PaginationRequestListDto } from '../../helpers/paginationParams.dto';
 
 @Injectable()
 export class AuthService {
@@ -202,5 +203,9 @@ export class AuthService {
   async resetPassword(token: string, newPassword: string) {
     const tokenHash = createHash('sha256').update(token).digest('hex');
     return this.usersRepository.resetPasswordByTokenHash(tokenHash, newPassword);
+  }
+
+  async listUsers(options?: PaginationRequestListDto) {
+    return this.usersRepository.listUsers(options);
   }
 }

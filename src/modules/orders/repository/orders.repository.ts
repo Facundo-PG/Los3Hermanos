@@ -72,6 +72,7 @@ export class OrdersRepository implements IOrdersRepository {
                         tipo_entrega: data.tipo_entrega,
                         notas: data.notas,
                         metodo_pago: data.metodo_pago,
+                        comprobante_url: data.comprobante_url,
                     },
                 });
 
@@ -264,6 +265,7 @@ export class OrdersRepository implements IOrdersRepository {
                     tipo_entrega: data.tipo_entrega,
                     notas: data.notas,
                     metodo_pago: data.metodo_pago,
+                    comprobante_url: data.comprobante_url,
                 },
                 include: {
                     order_items: {

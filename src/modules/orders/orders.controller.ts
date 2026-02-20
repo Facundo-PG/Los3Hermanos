@@ -1,11 +1,24 @@
-import { Controller, Post, Body, Res, UseGuards, Get, Query, Put, Delete } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Post, Body, Res, UseGuards, Get, Query, Put, Delete, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiConsumes } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import type { Request } from 'express';
+import type { File } from 'multer';
+import { extname, join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
 import type { Response } from 'express';
 import { OrdersService } from './service/orders.service';
 import { CreateOrderDto } from './repository/dto/create.orders.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorators'; import { PaginationRequestListDto } from '../../helpers/paginationParams.dto'; import { UpdateOrderDto } from './repository/dto/update.orders.dto'; @ApiTags('Orders')
+import { Roles } from '../auth/decorators/roles.decorators'; import { PaginationRequestListDto } from '../../helpers/paginationParams.dto'; import { UpdateOrderDto } from './repository/dto/update.orders.dto';
+
+const uploadsDir = join(process.cwd(), 'uploads', 'comprobantes');
+if (!existsSync(uploadsDir)) {
+    mkdirSync(uploadsDir, { recursive: true });
+}
+
+@ApiTags('Orders')
 @Controller('orders')
 export class OrdersController {
     constructor(private readonly ordersService: OrdersService) { }
@@ -153,6 +166,59 @@ export class OrdersController {
             statusCode,
             message,
             data,
+        });
+    }
+
+    @Roles('admin', 'cliente')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Post('upload-comprobante')
+    @ApiOperation({ summary: 'Upload payment receipt for an order' })
+    @ApiConsumes('multipart/form-data')
+    @ApiResponse({ status: 200, description: 'File uploaded successfully' })
+    @UseInterceptors(FileInterceptor('file', {
+        storage: diskStorage({
+            destination: (_req, _file, cb) => {
+                cb(null, uploadsDir);
+            },
+            filename: (_req, file, cb) => {
+                const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+                const ext = extname(file.originalname);
+                cb(null, `comprobante-${uniqueSuffix}${ext}`);
+            },
+        }),
+        fileFilter: (_req, file, cb) => {
+            const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+            if (allowedMimes.includes(file.mimetype)) {
+                cb(null, true);
+            } else {
+                cb(new BadRequestException('Solo se permiten archivos JPG, PNG, WEBP o PDF'), false);
+            }
+        },
+        limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    }))
+    async uploadComprobante(
+        @UploadedFile() file: File,
+        @Query('order_id') orderId: string,
+        @Res() res: Response,
+    ) {
+        if (!file) {
+            return res.status(400).json({ message: 'No se envió ningún archivo' });
+        }
+
+        const fileUrl = `/uploads/comprobantes/${file.filename}`;
+
+        // Guardar la URL en la orden
+        if (orderId) {
+            try {
+                await this.ordersService.updateOrder(Number(orderId), { comprobante_url: fileUrl });
+            } catch (error) {
+                console.error('Error al guardar comprobante en la orden:', error);
+            }
+        }
+
+        return res.status(200).json({
+            message: 'Comprobante subido exitosamente',
+            url: fileUrl,
         });
     }
 }

@@ -4,6 +4,7 @@ import { RegisterDto } from '../dto/register.dto';
 import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { UpdateUserDto } from '../dto/update-user.dto';
+import { PaginationRequestListDto, PaginationResult } from '../../../helpers/paginationParams.dto';
 
 @Injectable()
 export class UsersRepository {
@@ -206,5 +207,76 @@ export class UsersRepository {
     }, {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     });
+  }
+
+  async listUsers(options?: PaginationRequestListDto): Promise<PaginationResult<any[]>> {
+    try {
+      const { sortBy, search } = options || {};
+      const items: number = Number(options?.items) || 1;
+
+      const itemsPerPage: number =
+        Number(options?.itemsPerPage) ||
+        (await this.prisma.users.count());
+
+      const where: any = {};
+
+      if (search) {
+        where.OR = [
+          {
+            nombre: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+          {
+            email: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+          {
+            telefono: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+          {
+            rol: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+        ];
+      }
+
+      const total = await this.prisma.users.count({ where });
+
+      const data = await this.prisma.users.findMany({
+        where,
+        skip: (items - 1) * itemsPerPage,
+        take: itemsPerPage,
+        orderBy: {
+          id: sortBy === 'desc' ? 'desc' : 'asc',
+        },
+        select: {
+          id: true,
+          nombre: true,
+          email: true,
+          telefono: true,
+          direccion: true,
+          rol: true,
+          created_at: true,
+        },
+      });
+
+      return {
+        totalData: total,
+        items,
+        itemsPerPage,
+        data,
+      };
+    } catch (error) {
+      throw new Error(`Error al listar usuarios: ${error.message}`);
+    }
   }
 }

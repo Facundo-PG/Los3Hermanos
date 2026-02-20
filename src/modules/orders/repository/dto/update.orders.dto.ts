@@ -20,4 +20,9 @@ export class UpdateOrderDto {
     @IsOptional()
     @IsString()
     metodo_pago?: string;
+
+    @ApiProperty({ required: false })
+    @IsOptional()
+    @IsString()
+    comprobante_url?: string;
 }

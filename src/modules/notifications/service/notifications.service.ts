@@ -74,9 +74,12 @@ export class NotificationsService {
         try {
             const estadosMensajes: Record<string, string> = {
                 'pendiente': 'está pendiente de confirmación',
+                'pagado': 'fue marcado como pagado. ¡Gracias por tu pago!',
                 'preparando': 'está siendo preparado',
+                'en_proceso': 'está siendo preparado',
                 'listo': 'está listo para retirar',
                 'en_camino': 'está en camino a tu domicilio',
+                'completado': 'fue completado exitosamente',
                 'entregado': 'ha sido entregado',
                 'cancelado': 'ha sido cancelado',
             };

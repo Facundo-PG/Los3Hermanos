@@ -11,6 +11,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ConfirmEmailDto } from './dto/confirm-email.dto';
+import { PaginationRequestListDto } from '../../helpers/paginationParams.dto';
 
 @ApiTags('Auth') // Agrupa este controlador en la sección "Auth"
 @Controller('auth')
@@ -56,6 +57,16 @@ export class AuthController {
     return this.authService.resetPassword(resetPasswordDto.token, resetPasswordDto.password);
   }
 
+  @Roles('admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get('list')
+  @ApiOperation({ summary: 'Listar usuarios con paginación' })
+  @ApiResponse({ status: 200, description: 'Listado de usuarios obtenido exitosamente.' })
+  @ApiResponse({ status: 500, description: 'Error al obtener usuarios.' })
+  async listUsers(@Query() options: PaginationRequestListDto) {
+    return this.authService.listUsers(options);
+  }
+
   @Post('confirm-email')
   @ApiOperation({ summary: 'Confirmar correo electrónico y completar registro' })
   @ApiResponse({ status: 200, description: 'Correo confirmado y usuario creado.' })
@@ -70,15 +81,18 @@ export class AuthController {
     @Query('token') token: string,
     @Res() res: Response,
   ) {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const confirmationPath = process.env.FRONTEND_CONFIRM_PATH || '/confirm-account';
+
     if (!token) {
-      return res.redirect(this.getFrontendConfirmationUrl('error'));
+      return res.redirect(`${frontendUrl}${confirmationPath}?status=error`);
     }
 
     try {
       await this.authService.confirmEmail(token);
-      return res.redirect(this.getFrontendConfirmationUrl('success', token));
+      return res.redirect(`${frontendUrl}${confirmationPath}?status=success&token=${encodeURIComponent(token)}`);
     } catch {
-      return res.redirect(this.getFrontendConfirmationUrl('error', token));
+      return res.redirect(`${frontendUrl}${confirmationPath}?status=error&token=${encodeURIComponent(token)}`);
     }
   }
 

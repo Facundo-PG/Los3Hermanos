@@ -50,7 +50,7 @@ export class ProductsRepository implements IProductsRepository {
                 skip: (items - 1) * itemsPerPage,
                 take: itemsPerPage,
                 orderBy: {
-                    nombre: sortBy === 'asc' ? 'asc' : 'desc',
+                    id: sortBy === 'asc' ? 'asc' : 'asc',
                 },
                 include: {
                     categories: true,
@@ -103,6 +103,8 @@ export class ProductsRepository implements IProductsRepository {
                     stock: data.stock || 0,
                     imagen_url: data.imagen_url,
                     activo: data.activo ?? true,
+                    created_at: new Date(),
+                    updated_at: new Date(),
                 },
                 include: {
                     categories: true,
@@ -139,6 +141,7 @@ export class ProductsRepository implements IProductsRepository {
                     stock: data.stock,
                     imagen_url: data.imagen_url,
                     activo: data.activo,
+                    updated_at: new Date(),
                 },
                 include: {
                     categories: true,

@@ -31,7 +31,7 @@ export class UpdateProductDto {
     @IsOptional()
     @IsString()
     imagen_url?: string;
-
+    
     @ApiProperty({ required: false })
     @IsOptional()
     @IsBoolean()

@@ -205,7 +205,7 @@ export class OrdersController {
             return res.status(400).json({ message: 'No se envió ningún archivo' });
         }
 
-        const fileUrl = `/uploads/comprobantes/${file.filename}`;
+        const fileUrl = `comprobantes/${file.filename}`;
 
         // Guardar la URL en la orden
         if (orderId) {

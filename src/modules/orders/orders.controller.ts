@@ -202,18 +202,23 @@ export class OrdersController {
         @Res() res: Response,
     ) {
         if (!file) {
+            console.log('[UPLOAD] No se recibió archivo');
             return res.status(400).json({ message: 'No se envió ningún archivo' });
         }
 
         const fileUrl = `comprobantes/${file.filename}`;
+        console.log(`[UPLOAD] Archivo recibido: ${file.filename}, orderId: ${orderId}, fileUrl: ${fileUrl}`);
 
         // Guardar la URL en la orden
         if (orderId) {
             try {
-                await this.ordersService.updateOrder(Number(orderId), { comprobante_url: fileUrl });
+                const result = await this.ordersService.updateOrder(Number(orderId), { comprobante_url: fileUrl });
+                console.log(`[UPLOAD] Orden ${orderId} actualizada con comprobante:`, result);
             } catch (error) {
-                console.error('Error al guardar comprobante en la orden:', error);
+                console.error('[UPLOAD] Error al guardar comprobante en la orden:', error);
             }
+        } else {
+            console.log('[UPLOAD] No se recibió order_id');
         }
 
         return res.status(200).json({

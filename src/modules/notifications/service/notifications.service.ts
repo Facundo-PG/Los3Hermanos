@@ -19,15 +19,24 @@ export class NotificationsService {
             );
         }
 
-        return nodemailer.createTransport({
-            host: smtpHost,
-            port: smtpPort,
-            secure: smtpPort === 465,
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
             auth: {
                 user: smtpUser,
                 pass: smtpPass,
             },
         });
+
+        // Verificar que la conexión SMTP funciona
+        try {
+            await transporter.verify();
+            console.log('[SMTP] Conexión verificada correctamente');
+        } catch (verifyError) {
+            console.error('[SMTP] Error al verificar conexión:', verifyError);
+            throw new Error(`No se pudo conectar al servidor SMTP: ${verifyError.message}`);
+        }
+
+        return transporter;
     }
 
     async sendNewOrderNotificationToAdmins(
@@ -68,6 +77,59 @@ export class NotificationsService {
         }
     }
 
+    async sendOrderConfirmationToClient(
+        orderId: number,
+        clientEmail: string,
+        clientName: string,
+        totalPrice: number,
+    ): Promise<{ success: boolean; messageId: string; to: string }> {
+        try {
+            const mailFrom = process.env.MAIL_FROM || process.env.SMTP_USER;
+            const transporter = await this.getSmtpTransporter();
+
+            const info = await transporter.sendMail({
+                from: mailFrom,
+                to: clientEmail,
+                subject: `Pedido #${orderId} - Estado: Pendiente - Granja 3 Hermanos`,
+                text: `Hola ${clientName}, tu pedido #${orderId} fue recibido correctamente por un total de $${totalPrice.toFixed(2)}. Estado actual: PENDIENTE. Te avisaremos cuando cambie de estado. ¡Gracias por tu compra!`,
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #c62828;">¡Pedido recibido!</h2>
+                        <p>Hola <strong>${clientName}</strong>,</p>
+                        <p>Tu pedido fue registrado exitosamente:</p>
+                        <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+                            <tr style="background: #f5f5f5;">
+                                <td style="padding: 8px; font-weight: bold;">Pedido #</td>
+                                <td style="padding: 8px;">${orderId}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; font-weight: bold;">Total</td>
+                                <td style="padding: 8px;">$${totalPrice.toFixed(2)}</td>
+                            </tr>
+                            <tr style="background: #fff3e0;">
+                                <td style="padding: 8px; font-weight: bold;">Estado</td>
+                                <td style="padding: 8px;"><strong style="color: #e65100;">⏳ Pendiente</strong></td>
+                            </tr>
+                        </table>
+                        <p>Tu pedido está <strong>pendiente de confirmación</strong>. Te enviaremos un email cada vez que el estado cambie.</p>
+                        <p style="color: #666; font-size: 14px;">¡Gracias por elegirnos! 🐔</p>
+                        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                        <p style="color: #999; font-size: 12px;">Granja 3 Hermanos</p>
+                    </div>
+                `,
+            });
+
+            return {
+                success: true,
+                messageId: info.messageId,
+                to: clientEmail,
+            };
+        } catch (error) {
+            console.error('Error al enviar confirmación al cliente:', error);
+            throw new Error(`Error al enviar confirmación: ${error.message}`);
+        }
+    }
+
     async sendOrderStatusEmail(
         data: SendEmailDto,
     ): Promise<{ success: boolean; messageId: string; to: string }> {
@@ -84,16 +146,55 @@ export class NotificationsService {
                 'cancelado': 'ha sido cancelado',
             };
 
+            const estadoColores: Record<string, string> = {
+                'pendiente': '#e65100',
+                'pagado': '#2e7d32',
+                'preparando': '#1565c0',
+                'en_proceso': '#1565c0',
+                'listo': '#6a1b9a',
+                'en_camino': '#00838f',
+                'completado': '#2e7d32',
+                'entregado': '#2e7d32',
+                'cancelado': '#c62828',
+            };
+
+            const estadoIconos: Record<string, string> = {
+                'pendiente': '⏳',
+                'pagado': '💰',
+                'preparando': '👨‍🍳',
+                'en_proceso': '👨‍🍳',
+                'listo': '✅',
+                'en_camino': '🚚',
+                'completado': '🎉',
+                'entregado': '📦',
+                'cancelado': '❌',
+            };
+
             const mensajeEstado = estadosMensajes[data.estado] || `cambió a estado: ${data.estado}`;
+            const colorEstado = estadoColores[data.estado] || '#333';
+            const iconoEstado = estadoIconos[data.estado] || '📋';
+            const estadoLabel = data.estado.charAt(0).toUpperCase() + data.estado.slice(1).replace('_', ' ');
             const mailFrom = process.env.MAIL_FROM || process.env.SMTP_USER;
             const transporter = await this.getSmtpTransporter();
 
             const info = await transporter.sendMail({
                 from: mailFrom,
                 to: data.email,
-                subject: `Actualización de tu pedido #${data.order_id}`,
-                text: `Hola ${data.nombre}, tu pedido #${data.order_id} ${mensajeEstado}. Gracias por tu compra.`,
-                html: `<p>Hola <strong>${data.nombre}</strong>,</p><p>Tu pedido <strong>#${data.order_id}</strong> ${mensajeEstado}.</p><p>¡Gracias por tu compra!</p>`,
+                subject: `Pedido #${data.order_id} - Estado: ${estadoLabel} - Granja 3 Hermanos`,
+                text: `Hola ${data.nombre}, tu pedido #${data.order_id} ${mensajeEstado}. Estado actual: ${estadoLabel}. Gracias por tu compra.`,
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #c62828;">Actualización de tu pedido</h2>
+                        <p>Hola <strong>${data.nombre}</strong>,</p>
+                        <p>Tu pedido <strong>#${data.order_id}</strong> ${mensajeEstado}.</p>
+                        <div style="background: #f5f5f5; border-left: 4px solid ${colorEstado}; padding: 16px; margin: 16px 0; border-radius: 4px;">
+                            <p style="margin: 0; font-size: 18px;"><strong>${iconoEstado} Estado actual: <span style="color: ${colorEstado};">${estadoLabel}</span></strong></p>
+                        </div>
+                        <p>¡Gracias por tu compra!</p>
+                        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                        <p style="color: #999; font-size: 12px;">Granja 3 Hermanos</p>
+                    </div>
+                `,
             });
 
             return {

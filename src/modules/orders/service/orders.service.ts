@@ -32,6 +32,21 @@ export class OrdersService implements IOrdersService {
                     console.error('Error al notificar a admins:', notifError);
                     // No fallar la creación si falla la notificación
                 }
+
+                // Enviar confirmación al cliente
+                if (newOrder.users?.email) {
+                    try {
+                        await this.notificationsService.sendOrderConfirmationToClient(
+                            newOrder.id,
+                            newOrder.users.email,
+                            newOrder.users.nombre || 'Cliente',
+                            Number(newOrder.total) || 0,
+                        );
+                    } catch (clientNotifError) {
+                        console.error('Error al notificar al cliente:', clientNotifError);
+                        // No fallar la creación si falla la notificación
+                    }
+                }
             }
 
             return new ResponseTemplate(201, "Order created successfully", newOrder);

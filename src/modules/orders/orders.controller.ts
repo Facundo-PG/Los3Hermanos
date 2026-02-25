@@ -194,7 +194,7 @@ export class OrdersController {
                 cb(new BadRequestException('Solo se permiten archivos JPG, PNG, WEBP o PDF'), false);
             }
         },
-        limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+        limits: { fileSize: 1 * 1024 * 1024 }, // 1MB
     }))
     async uploadComprobante(
         @UploadedFile() file: File,

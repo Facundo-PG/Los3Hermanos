@@ -167,7 +167,7 @@ export class OrdersRepository implements IOrdersRepository {
         options?: PaginationRequestListDto,
     ): Promise<PaginationResult<orders[]>> {
         try {
-            const { sortBy, search } = options || {};
+            const { sortBy, search, dateFrom, dateTo } = options || {};
             const items: number = Number(options?.items) || 1;
 
             const itemsPerPage: number =
@@ -175,6 +175,19 @@ export class OrdersRepository implements IOrdersRepository {
                 (await this.prisma.orders.count());
 
             const where: any = {};
+
+            // Date filter
+            if (dateFrom || dateTo) {
+                where.created_at = {};
+                if (dateFrom) {
+                    where.created_at.gte = new Date(dateFrom);
+                }
+                if (dateTo) {
+                    const end = new Date(dateTo);
+                    end.setHours(23, 59, 59, 999);
+                    where.created_at.lte = end;
+                }
+            }
 
             if (search) {
                 where.OR = [

@@ -16,13 +16,21 @@ export class PaginationRequestListDto {
     @IsOptional()
     @IsString()
     search?: string;
+
+    @IsOptional()
+    @IsString()
+    dateFrom?: string;
+
+    @IsOptional()
+    @IsString()
+    dateTo?: string;
 }
 export interface PaginationParams {
-  items?: number;
-  itemsPerPage?: number;
-  sortBy?: string;
-  sortDesc?: boolean[];
-  search?: string;
+    items?: number;
+    itemsPerPage?: number;
+    sortBy?: string;
+    sortDesc?: boolean[];
+    search?: string;
 }
 export interface PaginationResult<T> {
     totalData: number;

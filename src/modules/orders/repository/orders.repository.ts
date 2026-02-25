@@ -176,16 +176,14 @@ export class OrdersRepository implements IOrdersRepository {
 
             const where: any = {};
 
-            // Date filter
+            // Date filter (Argentina UTC-3)
             if (dateFrom || dateTo) {
                 where.created_at = {};
                 if (dateFrom) {
-                    where.created_at.gte = new Date(dateFrom);
+                    where.created_at.gte = new Date(`${dateFrom}T00:00:00-03:00`);
                 }
                 if (dateTo) {
-                    const end = new Date(dateTo);
-                    end.setHours(23, 59, 59, 999);
-                    where.created_at.lte = end;
+                    where.created_at.lte = new Date(`${dateTo}T23:59:59.999-03:00`);
                 }
             }
 

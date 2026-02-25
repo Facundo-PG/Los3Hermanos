@@ -329,7 +329,7 @@ export class OrdersRepository implements IOrdersRepository {
             const pedidosPendientes = await this.prisma.orders.count({
                 where: {
                     estado: {
-                        in: ['pendiente', 'preparando'],
+                        in: ['pendiente', 'en_proceso', 'en_camino'],
                     },
                 },
             });

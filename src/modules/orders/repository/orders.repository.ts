@@ -14,6 +14,21 @@ import { DashboardData } from './dto/dashboard.dto';
 export class OrdersRepository implements IOrdersRepository {
     constructor(private readonly prisma: PrismaService) { }
 
+    /**
+     * Detecta si un producto es promoción y extrae los kg del nombre/descripción.
+     * Ej: "Promo 3kg de Alas" → 3, "Promoción 5kg Pata Muslo" → 5
+     * Si no es promo o no tiene kg, retorna 1 (descuento normal por unidad).
+     */
+    private getStockMultiplier(nombre: string, descripcion?: string | null): number {
+        const text = `${nombre} ${descripcion || ''}`;
+        // Solo aplica a productos con "promocion/promoción" en nombre o descripción
+        if (!/promoci[oó]n/i.test(text)) return 1;
+        // Extraer kg: "3kg", "3 kg", "3.5kg", "3,5 kg"
+        const match = text.match(/(\d+(?:[.,]\d+)?)\s*kg/i);
+        if (match) return parseFloat(match[1].replace(',', '.'));
+        return 1;
+    }
+
     async createOrder(data: CreateOrderDto): Promise<any> {
         try {
             // 1. Verificar si el local está abierto
@@ -39,10 +54,14 @@ export class OrdersRepository implements IOrdersRepository {
                         throw new Error(`Producto ${product.nombre} no está activo`);
                     }
 
+                    // Para promos: cada unidad consume X kg de stock
+                    const multiplier = this.getStockMultiplier(product.nombre, product.descripcion);
+                    const stockADescontar = item.cantidad * multiplier;
+
                     const stockActual = Number(product.stock) || 0;
-                    if (stockActual < item.cantidad) {
+                    if (stockActual < stockADescontar) {
                         throw new Error(
-                            `Stock insuficiente para ${product.nombre}. Stock disponible: ${stockActual}, solicitado: ${item.cantidad}`,
+                            `Stock insuficiente para ${product.nombre}. Stock disponible: ${stockActual} kg, solicitado: ${stockADescontar} kg`,
                         );
                     }
 
@@ -51,6 +70,7 @@ export class OrdersRepository implements IOrdersRepository {
                         cantidad: item.cantidad,
                         precio_unitario: Number(product.precio),
                         nombre: product.nombre,
+                        stockADescontar, // kg reales a descontar
                     };
                 }),
             );
@@ -90,29 +110,29 @@ export class OrdersRepository implements IOrdersRepository {
                     ),
                 );
 
-                // 4.3 Actualizar stock de productos
+                // 4.3 Actualizar stock (promos descuentan los kg reales)
                 await Promise.all(
                     productsData.map((item) =>
                         prisma.products.update({
                             where: { id: item.product_id },
                             data: {
                                 stock: {
-                                    decrement: item.cantidad,
+                                    decrement: item.stockADescontar,
                                 },
                             },
                         }),
                     ),
                 );
 
-                // 4.4 Crear stock_movements
+                // 4.4 Crear stock_movements (registrar kg reales descontados)
                 await Promise.all(
                     productsData.map((item) =>
                         prisma.stock_movements.create({
                             data: {
                                 product_id: item.product_id,
-                                cantidad: -item.cantidad,
+                                cantidad: -item.stockADescontar,
                                 tipo: 'venta',
-                                motivo: `Pedido #${newOrder.id}`,
+                                motivo: `Pedido #${newOrder.id}${item.stockADescontar !== item.cantidad ? ` (${item.cantidad} unidad(es) x ${item.stockADescontar / item.cantidad}kg)` : ''}`,
                             },
                         }),
                     ),
@@ -144,19 +164,7 @@ export class OrdersRepository implements IOrdersRepository {
                 throw new Error('Error al crear la orden');
             }
 
-            // 5. Generar link de WhatsApp con los detalles del pedido
-            const userName = result.users?.nombre || 'Cliente';
-            const orderDetails = productsData
-                .map((item) => `${item.cantidad}x ${item.nombre}`)
-                .join(', ');
-
-            const whatsappMessage = `Hola! Soy ${userName}. Mi pedido #${result.id} es: ${orderDetails}. Total: $${total.toFixed(2)}`;
-            const whatsappLink = `https://wa.me/1128809967?text=${encodeURIComponent(whatsappMessage)}`;
-
-            return {
-                ...result,
-                whatsappLink,
-            };
+            return result;
         } catch (error) {
             console.error('Error al crear la orden:', error);
             throw new Error(`Error al crear la orden: ${error.message}`);

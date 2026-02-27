@@ -373,11 +373,11 @@ export class OrdersRepository implements IOrdersRepository {
                     }),
             );
 
-            // 4. Stock Crítico (menos de 5 unidades)
+            // 4. Stock Crítico (menos de 10 kg)
             const stockCritico = await this.prisma.products.findMany({
                 where: {
                     stock: {
-                        lt: 5,
+                        lte: 10,
                     },
                     activo: true,
                 },
